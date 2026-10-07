@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IDOSR_2026 — Cours interactif</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ GATE ============ -->
+<div class="gate" id="gate">
+  <div class="gate-box" id="gateBox">
+    <div class="gate-logo">🔐</div>
+    <h1>IDOSR_2026</h1>
+    <p class="gate-sub">Accès protégé · connectez-vous avec votre compte</p>
+    <form id="gateForm" autocomplete="off">
+      <!-- NOUVEAU : champ identifiant (admin ou utilisateur) -->
+      <div class="gate-field">
+        <span class="gate-prompt">@</span>
+        <input type="text" id="gateUser" placeholder="identifiant..." autocapitalize="none" autofocus>
+      </div>
+      <div class="gate-field">
+        <span class="gate-prompt">$</span>
+        <input type="password" id="gatePass" placeholder="mot de passe...">
+      </div>
+      <button type="submit">Se connecter</button>
+      <p class="gate-msg" id="gateMsg"></p>
+    </form>
+    <div class="gate-hint">[ root@fedora ~ ]# accès restreint</div>
+  </div>
+</div>
+
+<!-- ============ CHOICE = PANNEAU UTILISATEUR (les cartes non autorisées sont verrouillées par le JS) ============ -->
+<div class="choice hidden" id="choice">
+  <div class="choice-inner">
+    <!-- NOUVEAU : barre du haut (utilisateur connecté + déconnexion) -->
+    <div class="topbar">
+      <div class="topbar-who"><span class="role-pill" id="rolePill"></span><strong id="whoName"></strong></div>
+      <div class="topbar-actions">
+        <button class="btn hidden" id="backToAdmin" type="button">⚙ Panneau Admin</button>
+        <button class="btn danger" id="logoutBtn" type="button">🔒 Déconnexion</button>
+      </div>
+    </div>
+    <div class="choice-brand">IDOSR_2026</div>
+    <h1>Choisissez votre module</h1>
+    <p>Sélectionnez le TP que vous souhaitez consulter.</p>
+
+    <div class="choice-cards">
+      <div class="choice-card" data-target="dns">
+        <div class="choice-icon">🌐</div>
+        <h2>Serveur DNS — Fedora</h2>
+        <p>Installation et configuration de BIND, zones directe et inverse, tests de résolution.</p>
+        <div class="choice-tags"><span>BIND 9</span><span>named</span><span>ofppt.ma</span></div>
+        <span class="choice-arrow">Ouvrir le module →</span>
+      </div>
+
+      <div class="choice-card blue" data-target="relay">
+        <div class="choice-icon">📡</div>
+        <h2>Agent de relais — DHCP Relay</h2>
+        <p>Deux étendues DHCP, dhcp-relay, interfaces, routage et routes statiques.</p>
+        <div class="choice-tags"><span>dhcrelay</span><span>ip_forward</span><span>route add</span></div>
+        <span class="choice-arrow">Ouvrir le module →</span>
+      </div>
+
+      <div class="choice-card amber" data-target="secondary">
+        <div class="choice-icon">🛰️</div>
+        <h2>Serveur DNS secondaire</h2>
+        <p>Transfert de zone primaire → secondaire, type slave, also-notify et vérification AXFR.</p>
+        <div class="choice-tags"><span>allow-transfer</span><span>also-notify</span><span>type slave</span></div>
+        <span class="choice-arrow">Ouvrir le module →</span>
+      </div>
+
+      <!-- NOUVEAU : DHCP -->
+      <div class="choice-card teal" data-target="dhcp">
+        <div class="choice-icon">📦</div>
+        <h2>Serveur DHCP — Fedora</h2>
+        <p>Installation, configuration de dhcpd.conf, deux pools, baux et réservation d'adresse.</p>
+        <div class="choice-tags"><span>dhcp-server</span><span>dhcpd.conf</span><span>leases</span></div>
+        <span class="choice-arrow">Ouvrir le module →</span>
+      </div>
+
+      <!-- NOUVEAU : DDNS -->
+      <div class="choice-card rose" data-target="ddns">
+        <div class="choice-icon">🔗</div>
+        <h2>DDNS — DHCP + DNS dynamique</h2>
+        <p>Mise à jour dynamique des zones DNS par le serveur DHCP (interim, allow-update).</p>
+        <div class="choice-tags"><span>ddns-update</span><span>allow-update</span><span>interim</span></div>
+        <span class="choice-arrow">Ouvrir le module →</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================= -->
+<!-- ================== PANNEAU ADMIN (nouveau) ================== -->
+<!-- ============================================================= -->
+<div class="admin-view hidden" id="adminPanel">
+  <div class="admin-inner">
+    <div class="topbar">
+      <div class="topbar-who"><span class="role-pill admin">👑 Admin</span><strong>Panneau d'administration</strong></div>
+      <div class="topbar-actions">
+        <button class="btn" id="adminViewCourses" type="button">📚 Voir tous les cours</button>
+        <button class="btn danger" id="adminLogout" type="button">🔒 Déconnexion</button>
+      </div>
+    </div>
+    <h1>Gestion des utilisateurs</h1>
+    <p class="lead">Ajoutez, modifiez ou supprimez des comptes, gérez leurs mots de passe et leurs accès, puis enregistrez.</p>
+
+    <div class="savebar" id="saveBar">
+      <span class="dirty-note" id="dirtyNote">✔ Tout est enregistré</span>
+      <div class="savebar-actions">
+        <span class="form-msg" id="saveMsg"></span>
+        <button class="btn" id="discardAll" type="button">↩ Annuler les modifications</button>
+        <button class="btn primary" id="saveAll" type="button">💾 Tout enregistrer</button>
+      </div>
+    </div>
+
+    <div class="admin-grid">
+      <div class="panel">
+        <h3>Utilisateurs<span class="count-pill" id="userCount"></span></h3>
+        <div class="user-list" id="userList"></div>
+        <button class="btn add-btn" id="addUserBtn" type="button">➕ Ajouter un utilisateur</button>
+      </div>
+
+      <div class="admin-right">
+        <div class="panel hidden" id="userEmpty"><div class="empty-note">Aucun utilisateur.<br>Cliquez sur « Ajouter un utilisateur » pour en créer un.</div></div>
+
+        <div class="admin-right hidden" id="userDetail">
+          <div class="panel">
+            <h3>✏️ Profil</h3>
+            <div class="form-row">
+              <label class="field">Nom affiché<input type="text" id="fName" maxlength="40" autocomplete="off"></label>
+              <label class="field">Nom d'utilisateur<input type="text" id="fUser" maxlength="20" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+            </div>
+            <div class="row-actions">
+              <button class="btn" id="applyProfile" type="button">✏️ Appliquer</button>
+              <span class="form-msg" id="profileMsg"></span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>🔑 Mot de passe</h3>
+            <div class="pw-row">
+              <input type="password" id="fPass" placeholder="nouveau mot de passe..." autocomplete="new-password" spellcheck="false">
+              <button class="btn" id="togglePass" type="button" title="Afficher / masquer">👁</button>
+              <button class="btn" id="genPass" type="button">🎲 Générer</button>
+              <button class="btn" id="applyPass" type="button">🔑 Changer</button>
+            </div>
+            <div class="row-actions"><span class="form-msg" id="passMsg"></span></div>
+          </div>
+
+          <div class="panel">
+            <div class="perm-head"><h2 id="permTitle"></h2>
+              <div><button class="btn" id="checkAll" type="button">Tout cocher</button>
+                   <button class="btn" id="uncheckAll" type="button">Tout décocher</button></div>
+            </div>
+            <div class="perm-list" id="permList"></div>
+          </div>
+
+          <div class="panel danger-zone">
+            <h3>🗑️ Zone dangereuse</h3>
+            <button class="btn danger" id="deleteUser" type="button">🗑️ Supprimer cet utilisateur</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel data-panel">
+      <h3>💾 Données &amp; synchronisation</h3>
+      <p class="data-status" id="dataStatus"></p>
+      <div class="data-cols">
+        <div>
+          <div class="data-actions">
+            <button class="btn" id="exportBtn" type="button">⬇ Exporter users.json</button>
+            <button class="btn" id="importBtn" type="button">⬆ Importer users.json</button>
+            <button class="btn danger" id="reloadBtn" type="button">↺ Recharger depuis le serveur</button>
+            <input type="file" id="importFile" accept="application/json,.json" class="hidden">
+          </div>
+          <div class="row-actions"><span class="form-msg" id="dataMsg"></span></div>
+        </div>
+        <div>
+          <div class="pw-row">
+            <input type="password" id="fAdminPass" placeholder="nouveau mot de passe admin (8+ caractères)" autocomplete="new-password" spellcheck="false">
+            <button class="btn" id="applyAdminPass" type="button">👑 Changer</button>
+          </div>
+          <div class="row-actions"><span class="form-msg" id="adminPassMsg"></span></div>
+        </div>
+      </div>
+      <p class="data-help">
+        Vos modifications sont enregistrées dans <b>ce navigateur</b> (localStorage). Pour que <b>tous les autres navigateurs</b> les voient :
+        cliquez sur <b>Exporter</b>, puis remplacez le fichier <code>data/users.json</code> sur GitHub / Netlify.
+      </p>
+    </div>
+  </div>
+
+  <!-- Fenêtre modale (ajout / confirmation) : placée hors de .admin-inner pour rester fixe à l'écran -->
+  <div class="modal hidden" id="modal">
+    <div class="modal-box">
+      <h3 id="modalTitle"></h3>
+      <div class="modal-body" id="modalBody"></div>
+      <p class="form-msg err" id="modalMsg"></p>
+      <div class="modal-actions">
+        <button class="btn" id="modalCancel" type="button">Annuler</button>
+        <button class="btn primary" id="modalOk" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================= -->
+<!-- ====================== MODULE DNS =========================== -->
+<!-- ============================================================= -->
+<div class="layout hidden" id="dnsApp">
+  <nav class="sidebar" id="sidebarDns">
+    <p class="side-title">Sommaire · DNS</p>
+    <a href="#d-machines">🖥️ Machines du réseau</a>
+    <a href="#s1">1 · Installer les paquets</a>
+    <a href="#s2">2 · Activer le service</a>
+    <a href="#s3">3 · Nom de la machine</a>
+    <a href="#s4">4 · Fichier named.conf</a>
+    <a href="#s5">5 · Zone directe</a>
+    <a href="#s6">6 · Zone inverse</a>
+    <a href="#s7">7 · Firewall (ouverture)</a>
+    <a href="#s8">8 · Firewall (reload)</a>
+    <a href="#s9">9 · Vérifier named.conf</a>
+    <a href="#s10">10 · Vérifier zone directe</a>
+    <a href="#s11">11 · Vérifier zone inverse</a>
+    <a href="#s12">12 · Redémarrer named</a>
+    <a href="#s13">13 · État du service</a>
+    <a href="#s14">14 · Test direct</a>
+    <a href="#s15">15 · Test inverse</a>
+  </nav>
+  <main>
+    <header class="hero">
+      <div class="hero-actions">
+        <button class="lock-btn home" id="homeFromDns">↩ Modules</button>
+        <button class="lock-btn" id="lockFromDns">🔒 Verrouiller</button>
+      </div>
+      <div class="hero-badge">🐧 Fedora · BIND 9 · named</div>
+      <h1>🌐 Installation et configuration d'un serveur DNS</h1>
+      <p>Guide pratique pas à pas : installation de BIND, configuration des zones directe et inverse, ouverture du firewall et tests de résolution DNS.</p>
+      <div class="hero-meta">
+        <span>🎯 Domaine : ofppt.ma</span>
+        <span>🌍 Réseau : 192.168.1.0/24</span>
+        <span>🖥️ Serveur : 192.168.1.10</span>
+        <span>🛰️ Secondaire : 192.168.1.254</span>
+      </div>
+    </header>
+
+    <section class="step" id="d-machines">
+      <div class="step-head"><div class="step-num">🖥️</div><h2>Machines du réseau</h2></div>
+      <p>Inventaire des machines utilisées dans ce TP (même réseau <code>192.168.1.0/24</code>).</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Machine</th><th>Nom DNS</th><th>Adresse IP</th></tr></thead>
+        <tbody>
+          <tr><td>Serveur DNS primaire <span class="badge-p">master</span></td><td class="mono">fedora.ofppt.ma</td><td class="mono">192.168.1.10</td></tr>
+          <tr><td>Serveur DNS secondaire <span class="badge-s">slave</span></td><td class="mono">ns2.ofppt.ma</td><td class="mono">192.168.1.254</td></tr>
+          <tr><td>PC 1</td><td class="mono">pc1.ofppt.ma</td><td class="mono">192.168.1.20</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="step" id="s1"><div class="step-head"><div class="step-num">01</div><h2>1️⃣ Installer les paquets du serveur DNS</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">dnf install bind bind-utils -y</span></pre></div>
+      <div class="note">➡️ Installe <b>BIND</b>, le serveur DNS, ainsi que les <b>outils de test DNS</b>.</div></section>
+
+    <section class="step" id="s2"><div class="step-head"><div class="step-num">02</div><h2>2️⃣ Activer et démarrer le service DNS</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">systemctl enable --now named</span></pre></div>
+      <div class="note">➡️ Active le service <code>named</code> au démarrage <b>et</b> le démarre immédiatement.</div></section>
+
+    <section class="step" id="s3"><div class="step-head"><div class="step-num">03</div><h2>3️⃣ Vérifier et définir le nom de la machine</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">hostname</span>
+<span class="output">fedora.ofppt.ma</span></pre></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">hostnamectl set-hostname fedora.ofppt.ma</span></pre></div>
+      <div class="note">➡️ Définit <code>fedora.ofppt.ma</code> comme nom d'hôte permanent.</div></section>
+
+    <section class="step" id="s4"><div class="step-head"><div class="step-num">04</div><h2>⚙️ 4️⃣ Configurer le fichier principal de BIND</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">vi /etc/named.conf</span></pre></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/etc/named.conf</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-key">options</span> {
+    <span class="c-key">listen-on</span> port <span class="c-num">53</span> { <span class="c-ip">192.168.1.10;</span> };
+    <span class="c-key">allow-query</span> { <span class="c-ip">192.168.1.0/24;</span> };
+};
+
+<span class="c-key">zone</span> <span class="c-str">"ofppt.ma"</span> IN {
+    <span class="c-key">type</span> master;
+    <span class="c-key">file</span> <span class="c-str">"/var/named/zone.dir"</span>;
+};
+
+<span class="c-key">zone</span> <span class="c-str">"1.168.192.in-addr.arpa"</span> IN {
+    <span class="c-key">type</span> master;
+    <span class="c-key">file</span> <span class="c-str">"/var/named/zone.inv"</span>;
+};</pre></div>
+      <ul class="explain">
+        <li><code>listen-on</code> : adresse IP du serveur DNS.</li>
+        <li><code>allow-query</code> : autorise le réseau <code>192.168.1.0/24</code>.</li>
+        <li>La <b>zone directe</b> utilise <code>/var/named/zone.dir</code>.</li>
+        <li>La <b>zone inverse</b> utilise <code>/var/named/zone.inv</code>.</li>
+      </ul></section>
+
+    <section class="step" id="s5"><div class="step-head"><div class="step-num">05</div><h2>📁 5️⃣ Créer la zone directe</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">touch /var/named/zone.dir</span>
+<span class="prompt">[root@fedora ~]#</span> <span class="cmd">vi /var/named/zone.dir</span></pre></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/var/named/zone.dir</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-key">$TTL</span> <span class="c-num">86400</span>
+
+@   <span class="c-type">IN</span>  <span class="c-type">SOA</span> <span class="c-ip">fedora.ofppt.ma.</span> <span class="c-ip">admin.ofppt.ma.</span> (
+        <span class="c-num">2026100601</span>
+        <span class="c-num">3600</span>
+        <span class="c-num">1800</span>
+        <span class="c-num">604800</span>
+        <span class="c-num">86400</span>
+)
+
+@       <span class="c-type">IN</span>  <span class="c-type">NS</span>  <span class="c-ip">fedora.ofppt.ma.</span>
+@       <span class="c-type">IN</span>  <span class="c-type">NS</span>  <span class="c-ip">ns2.ofppt.ma.</span>
+
+fedora  <span class="c-type">IN</span>  <span class="c-type">A</span>   <span class="c-ip">192.168.1.10</span>
+ns2     <span class="c-type">IN</span>  <span class="c-type">A</span>   <span class="c-ip">192.168.1.254</span>
+pc1     <span class="c-type">IN</span>  <span class="c-type">A</span>   <span class="c-ip">192.168.1.20</span></pre></div>
+      <div class="note green">📌 <code>fedora.ofppt.ma → 192.168.1.10</code> · <code>ns2 → 192.168.1.254</code> · <code>pc1 → 192.168.1.20</code></div></section>
+
+    <section class="step" id="s6"><div class="step-head"><div class="step-num">06</div><h2>🔄 6️⃣ Créer la zone inverse</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">touch /var/named/zone.inv</span>
+<span class="prompt">[root@fedora ~]#</span> <span class="cmd">vi /var/named/zone.inv</span></pre></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/var/named/zone.inv</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-key">$TTL</span> <span class="c-num">86400</span>
+
+@   <span class="c-type">IN</span>  <span class="c-type">SOA</span> <span class="c-ip">fedora.ofppt.ma.</span> <span class="c-ip">admin.ofppt.ma.</span> (
+        <span class="c-num">2026100601</span>
+        <span class="c-num">3600</span>
+        <span class="c-num">1800</span>
+        <span class="c-num">604800</span>
+        <span class="c-num">86400</span>
+)
+
+@       <span class="c-type">IN</span>  <span class="c-type">NS</span>  <span class="c-ip">fedora.ofppt.ma.</span>
+@       <span class="c-type">IN</span>  <span class="c-type">NS</span>  <span class="c-ip">ns2.ofppt.ma.</span>
+
+<span class="c-num">10</span>      <span class="c-type">IN</span>  <span class="c-type">PTR</span> <span class="c-ip">fedora.ofppt.ma.</span>
+<span class="c-num">20</span>      <span class="c-type">IN</span>  <span class="c-type">PTR</span> <span class="c-ip">pc1.ofppt.ma.</span>
+<span class="c-num">254</span>     <span class="c-type">IN</span>  <span class="c-type">PTR</span> <span class="c-ip">ns2.ofppt.ma.</span></pre></div>
+      <div class="note green">📌 <code>192.168.1.254 → ns2.ofppt.ma</code></div></section>
+
+    <section class="step" id="s7"><div class="step-head"><div class="step-num">07</div><h2>🔥 7️⃣ Autoriser le DNS dans le Firewall</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">firewall-cmd --permanent --add-service=dns</span>
+<span class="output">success</span></pre></div></section>
+
+    <section class="step" id="s8"><div class="step-head"><div class="step-num">08</div><h2>🔄 8️⃣ Recharger le Firewall</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">firewall-cmd --reload</span>
+<span class="output">success</span></pre></div></section>
+
+    <section class="step" id="s9"><div class="step-head"><div class="step-num">09</div><h2>🔍 9️⃣ Vérifier la configuration de BIND</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">named-checkconf</span>
+<span class="output">(aucune sortie)</span></pre></div></section>
+
+    <section class="step" id="s10"><div class="step-head"><div class="step-num">10</div><h2>🔍 🔟 Vérifier la zone directe</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">named-checkzone ofppt.ma /var/named/zone.dir</span>
+<span class="ok">zone ofppt.ma/IN: loaded serial 2026100601
+OK</span></pre></div></section>
+
+    <section class="step" id="s11"><div class="step-head"><div class="step-num">11</div><h2>🔍 1️⃣1️⃣ Vérifier la zone inverse</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">named-checkzone 1.168.192.in-addr.arpa /var/named/zone.inv</span>
+<span class="ok">zone 1.168.192.in-addr.arpa/IN: loaded serial 2026100601
+OK</span></pre></div></section>
+
+    <section class="step" id="s12"><div class="step-head"><div class="step-num">12</div><h2>🔄 1️⃣2️⃣ Redémarrer le serveur DNS</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">systemctl restart named</span></pre></div></section>
+
+    <section class="step" id="s13"><div class="step-head"><div class="step-num">13</div><h2>🟢 1️⃣3️⃣ Vérifier l'état du serveur DNS</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">systemctl status named</span>
+<span class="output">● named.service - Berkeley Internet Name Domain (DNS)
+     Active: </span><span class="ok">active (running)</span></pre></div></section>
+
+    <section class="step" id="s14"><div class="step-head"><div class="step-num">14</div><h2>🧪 1️⃣4️⃣ Tester la résolution DNS directe</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">nslookup pc1.ofppt.ma 192.168.1.10</span>
+<span class="output">Name:	pc1.ofppt.ma
+Address: </span><span class="ok">192.168.1.20</span></pre></div></section>
+
+    <section class="step" id="s15"><div class="step-head"><div class="step-num">15</div><h2>🔄 1️⃣5️⃣ Tester la résolution DNS inverse</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt">[root@fedora ~]#</span> <span class="cmd">dig @192.168.1.10 -x 192.168.1.20</span>
+<span class="output">;; ANSWER SECTION:
+20.1.168.192.in-addr.arpa. 86400 IN	PTR	</span><span class="ok">pc1.ofppt.ma.</span></pre></div></section>
+  </main>
+</div>
+
+<!-- ============================================================= -->
+<!-- ====================== MODULE RELAY ========================= -->
+<!-- ============================================================= -->
+<div class="layout hidden" id="relayApp">
+  <nav class="sidebar blue" id="sidebarRelay">
+    <p class="side-title">Sommaire · Relais</p>
+    <a href="#r1">1 · Créer deux étendues</a>
+    <a href="#r2">2 · Redémarrer DHCP</a>
+    <a href="#r3">3 · Passerelle du serveur</a>
+    <a href="#r4">4 · Installer dhcp-relay</a>
+    <a href="#r5">5 · Première interface AR</a>
+    <a href="#r6">6 · Connecter AR ↔ DHCP</a>
+    <a href="#r7">7 · Nouvelle interface AR</a>
+    <a href="#r8">8 · Nouveau vnet</a>
+    <a href="#r9">9 · Copier le service</a>
+    <a href="#r10">10 · Modifier execstart</a>
+    <a href="#r11">11 · daemon-reload & restart</a>
+    <a href="#r12">12 · Activer le routage</a>
+    <a href="#r13">13 · Routes statiques</a>
+    <a href="#r14">14 · route add</a>
+  </nav>
+  <main>
+    <header class="hero">
+      <div class="hero-actions">
+        <button class="lock-btn home" id="homeFromRelay">↩ Modules</button>
+        <button class="lock-btn" id="lockFromRelay">🔒 Verrouiller</button>
+      </div>
+      <div class="hero-badge blue">📡 DHCP · dhcrelay · Routage</div>
+      <h1>📡 Agent de relais — DHCP Relay</h1>
+      <p>Configuration d'un agent de relais DHCP : deux étendues, interfaces réseau, service <code>dhcrelay</code>, activation du routage et routes statiques.</p>
+      <div class="hero-meta">
+        <span>🌍 Réseau 1 : 192.168.20.0/24</span>
+        <span>🌍 Réseau 2 : 10.20.0.0/16</span>
+        <span>🖥️ AR : dhcp-relay</span>
+      </div>
+    </header>
+
+    <section class="step" id="r1"><div class="step-head"><div class="step-num blue">01</div><h2>1️⃣ Créer deux étendues</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/etc/dhcp/dhcpd.conf</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-blue">subnet</span> <span class="c-ip">192.168.20.0</span> netmask <span class="c-ip">255.255.255.0</span> {
+  <span class="c-key">range</span> <span class="c-ip">192.168.20.16</span> <span class="c-ip">192.168.20.18</span>;
+  <span class="c-key">option</span> domain-name <span class="c-str">"idosr202.ma"</span>;
+  <span class="c-key">option</span> domain-name-servers <span class="c-ip">192.168.20.2</span>;
+  <span class="c-key">option</span> routers <span class="c-ip">192.168.20.17</span>;
+  <span class="c-key">option</span> broadcast-address <span class="c-ip">192.168.20.255</span>;
+  <span class="c-key">default-lease-time</span> <span class="c-num">120</span>;
+  <span class="c-key">max-lease-time</span> <span class="c-num">120</span>;
+}
+
+<span class="c-blue">subnet</span> <span class="c-ip">10.20.0.0</span> netmask <span class="c-ip">255.255.0.0</span> {
+  <span class="c-key">range</span> <span class="c-ip">10.20.0.105</span> <span class="c-ip">10.20.0.108</span>;
+  <span class="c-key">option</span> domain-name <span class="c-str">"idosr202.ma"</span>;
+  <span class="c-key">option</span> domain-name-servers <span class="c-ip">10.20.0.2</span>;
+  <span class="c-key">option</span> routers <span class="c-ip">10.20.0.13</span>;
+  <span class="c-key">option</span> broadcast-address <span class="c-ip">10.20.255.255</span>;
+  <span class="c-key">default-lease-time</span> <span class="c-num">120</span>;
+  <span class="c-key">max-lease-time</span> <span class="c-num">120</span>;
+}</pre></div></section>
+
+    <section class="step" id="r2"><div class="step-head"><div class="step-num blue">02</div><h2>2️⃣ Redémarrage du service DHCP</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@fedora ~]#</span> <span class="cmd">systemctl restart dhcpd</span>
+<span class="prompt blue">[root@fedora ~]#</span> <span class="cmd">systemctl status dhcpd</span>
+<span class="output">Active: </span><span class="ok">active (running)</span></pre></div></section>
+
+    <section class="step" id="r3"><div class="step-head"><div class="step-num blue">03</div><h2>3️⃣ Attribuer la passerelle au serveur</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@fedora ~]#</span> <span class="cmd">ip route add default via 192.168.20.17</span></pre></div></section>
+
+    <section class="step" id="r4"><div class="step-head"><div class="step-num blue">04</div><h2>4️⃣ Installer le package dhcp-relay</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@fedora ~]#</span> <span class="cmd">dnf install dhcp-relay -y</span></pre></div></section>
+
+    <section class="step" id="r5"><div class="step-head"><div class="step-num blue">05</div><h2>5️⃣ Configurer la première interface de l'AR</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ar: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@ar ~]#</span> <span class="cmd">ip addr add 192.168.20.1/24 dev eth0</span>
+<span class="prompt blue">[root@ar ~]#</span> <span class="cmd">ip link set eth0 up</span></pre></div></section>
+
+    <section class="step" id="r6"><div class="step-head"><div class="step-num blue">06</div><h2>6️⃣ Connecter l'AR avec le serveur DHCP</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ar: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@ar ~]#</span> <span class="cmd">ping -c 2 192.168.20.2</span></pre></div></section>
+
+    <section class="step" id="r7"><div class="step-head"><div class="step-num blue">07</div><h2>7️⃣ Ajouter une nouvelle interface sur l'AR</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ar: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@ar ~]#</span> <span class="cmd">ip addr add 10.20.0.1/16 dev eth1</span>
+<span class="prompt blue">[root@ar ~]#</span> <span class="cmd">ip link set eth1 up</span></pre></div></section>
+
+    <section class="step" id="r8"><div class="step-head"><div class="step-num blue">08</div><h2>8️⃣ Créer un nouveau vnet</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ar: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@ar ~]#</span> <span class="cmd">virsh net-define vnet2.xml</span>
+<span class="prompt blue">[root@ar ~]#</span> <span class="cmd">virsh net-start vnet2</span>
+<span class="prompt blue">[root@ar ~]#</span> <span class="cmd">virsh net-autostart vnet2</span>
+<span class="prompt blue">[root@ar ~]#</span> <span class="cmd">virsh attach-interface ar --type network --source vnet2 --model virtio --config</span></pre></div></section>
+
+    <section class="step" id="r9"><div class="step-head"><div class="step-num blue">09</div><h2>9️⃣ Copier le fichier de service dhcrelay</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ar: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@ar ~]#</span> <span class="cmd">cp /lib/systemd/system/dhcrelay.service /etc/systemd/system/</span></pre></div></section>
+
+    <section class="step" id="r10"><div class="step-head"><div class="step-num blue">10</div><h2>🔟 Modifier dhcrelay.service</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/etc/systemd/system/dhcrelay.service</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-blue">[Service]</span>
+Type=simple
+ExecStart=/usr/sbin/dhcrelay -d --no-pid <span class="c-ip">192.168.20.2</span></pre></div>
+      <div class="note warn">⚠️ L'adresse <code>192.168.20.2</code> = adresse du serveur DHCP.</div></section>
+
+    <section class="step" id="r11"><div class="step-head"><div class="step-num blue">11</div><h2>1️⃣1️⃣ Recharger systemd et redémarrer dhcrelay</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ar: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@ar ~]#</span> <span class="cmd">systemctl --system daemon-reload</span>
+<span class="prompt blue">[root@ar ~]#</span> <span class="cmd">systemctl restart dhcrelay</span></pre></div></section>
+
+    <section class="step" id="r12"><div class="step-head"><div class="step-num blue">12</div><h2>1️⃣2️⃣ Activer le routage</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ar: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@ar ~]#</span> <span class="cmd">echo 1 &gt; /proc/sys/net/ipv4/ip_forward</span></pre></div></section>
+
+    <section class="step" id="r13"><div class="step-head"><div class="step-num blue">13</div><h2>1️⃣3️⃣ Ajouter les routes statiques</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ar: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@ar ~]#</span> <span class="cmd">ip route add 10.20.0.0/16 dev eth1</span>
+<span class="prompt blue">[root@ar ~]#</span> <span class="cmd">ip route add 192.168.20.0/24 dev eth0</span></pre></div></section>
+
+    <section class="step" id="r14"><div class="step-head"><div class="step-num blue">14</div><h2>1️⃣4️⃣ Ajouter une route avec route add</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ar: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt blue">[root@ar ~]#</span> <span class="cmd">route add -net 10.20.0.0 netmask 255.255.0.0 dev eth1</span>
+<span class="prompt blue">[root@ar ~]#</span> <span class="cmd">route add -net 192.168.20.0 netmask 255.255.255.0 dev eth0</span></pre></div></section>
+  </main>
+</div>
+
+<!-- ============================================================= -->
+<!-- ================= MODULE DNS SECONDAIRE ==================== -->
+<!-- ============================================================= -->
+<div class="layout hidden" id="secondaryApp">
+  <nav class="sidebar amber" id="sidebarSecondary">
+    <p class="side-title">Sommaire · Secondaire</p>
+    <a href="#sec-machines">🖥️ Machines du réseau</a>
+    <a href="#sec1">16 · Transfert sur primaire</a>
+    <a href="#sec2">17 · Mise à jour des zones</a>
+    <a href="#sec3">18 · Installer secondaire</a>
+    <a href="#sec4">19 · named.conf secondaire</a>
+    <a href="#sec5">20 · Démarrer secondaire</a>
+    <a href="#sec6">21 · Vérifier le transfert</a>
+    <a href="#sec7">22 · Tester via secondaire</a>
+    <a href="#sec8">23 · rndc (forcer AXFR)</a>
+  </nav>
+  <main>
+    <header class="hero">
+      <div class="hero-actions">
+        <button class="lock-btn home" id="homeFromSecondary">↩ Modules</button>
+        <button class="lock-btn" id="lockFromSecondary">🔒 Verrouiller</button>
+      </div>
+      <div class="hero-badge amber">🛰️ BIND 9 · type slave · AXFR</div>
+      <h1>🛰️ Serveur DNS secondaire — Transfert de zone</h1>
+      <p>Configuration d'un second serveur DNS sur <b>192.168.1.254</b> qui reçoit automatiquement les zones du primaire <code>192.168.1.10</code>.</p>
+      <div class="hero-meta">
+        <span>🟢 Primaire : 192.168.1.10</span>
+        <span>🟡 Secondaire : 192.168.1.254</span>
+        <span>🌍 Réseau : 192.168.1.0/24</span>
+      </div>
+    </header>
+
+    <section class="step" id="sec-machines">
+      <div class="step-head"><div class="step-num amber">🖥️</div><h2>Rappel — Machines du même réseau</h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Rôle</th><th>Nom DNS</th><th>Adresse IP</th><th>Type</th></tr></thead>
+        <tbody>
+          <tr><td>DNS primaire</td><td class="mono">fedora.ofppt.ma</td><td class="mono">192.168.1.10</td><td><span class="badge-p">master</span></td></tr>
+          <tr><td>DNS secondaire</td><td class="mono">ns2.ofppt.ma</td><td class="mono">192.168.1.254</td><td><span class="badge-s">slave</span></td></tr>
+        </tbody>
+      </table></div></section>
+
+    <section class="step" id="sec1"><div class="step-head"><div class="step-num amber">16</div><h2>🔁 1️⃣6️⃣ Configurer le transfert sur le primaire</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/etc/named.conf (primaire)</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-key">options</span> {
+    <span class="c-key">listen-on</span> port <span class="c-num">53</span> { <span class="c-ip">192.168.1.10;</span> };
+    <span class="c-key">allow-query</span> { <span class="c-ip">192.168.1.0/24;</span> };
+    <span class="c-key">allow-transfer</span> { <span class="c-ip">192.168.1.254;</span> };   <span class="c-hash">#</span> <span class="c-hash-note">autorise secondaire</span>
+    <span class="c-key">also-notify</span> { <span class="c-ip">192.168.1.254;</span> };      <span class="c-hash">#</span> <span class="c-hash-note">notifie secondaire</span>
+};
+
+<span class="c-key">zone</span> <span class="c-str">"ofppt.ma"</span> IN {
+    <span class="c-key">type</span> master;
+    <span class="c-key">file</span> <span class="c-str">"/var/named/zone.dir"</span>;
+    <span class="c-key">allow-transfer</span> { <span class="c-ip">192.168.1.254;</span> };
+    <span class="c-key">also-notify</span> { <span class="c-ip">192.168.1.254;</span> };
+};
+
+<span class="c-key">zone</span> <span class="c-str">"1.168.192.in-addr.arpa"</span> IN {
+    <span class="c-key">type</span> master;
+    <span class="c-key">file</span> <span class="c-str">"/var/named/zone.inv"</span>;
+    <span class="c-key">allow-transfer</span> { <span class="c-ip">192.168.1.254;</span> };
+    <span class="c-key">also-notify</span> { <span class="c-ip">192.168.1.254;</span> };
+};</pre></div>
+      <ul class="explain amber">
+        <li><code>allow-transfer</code> — <b>autorise le secondaire</b> à copier la zone.</li>
+        <li><code>also-notify</code> — <b>prévient le secondaire</b> immédiatement.</li>
+        <li><code>type master</code> — <b>source officielle</b> de la zone.</li>
+      </ul></section>
+
+    <section class="step" id="sec2"><div class="step-head"><div class="step-num amber">17</div><h2>📝 1️⃣7️⃣ Mettre à jour les fichiers de zone</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/var/named/zone.dir</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body">@       <span class="c-type">IN</span>  <span class="c-type">NS</span>  <span class="c-ip">fedora.ofppt.ma.</span>       <span class="c-hash">#</span> <span class="c-hash-note">NS primaire</span>
+@       <span class="c-type">IN</span>  <span class="c-type">NS</span>  <span class="c-ip">ns2.ofppt.ma.</span>          <span class="c-hash">#</span> <span class="c-hash-note">NS secondaire</span>
+ns2     <span class="c-type">IN</span>  <span class="c-type">A</span>   <span class="c-ip">192.168.1.254</span>         <span class="c-hash">#</span> <span class="c-hash-note">IP secondaire</span></pre></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/var/named/zone.inv</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body">@       <span class="c-type">IN</span>  <span class="c-type">NS</span>  <span class="c-ip">ns2.ofppt.ma.</span>          <span class="c-hash">#</span> <span class="c-hash-note">NS secondaire</span>
+<span class="c-num">254</span>     <span class="c-type">IN</span>  <span class="c-type">PTR</span> <span class="c-ip">ns2.ofppt.ma.</span>         <span class="c-hash">#</span> <span class="c-hash-note">PTR secondaire</span></pre></div>
+      <div class="note green">📌 Incrémenter le n° de série à chaque modification pour déclencher le transfert.</div></section>
+
+    <section class="step" id="sec3"><div class="step-head"><div class="step-num amber">18</div><h2>📦 1️⃣8️⃣ Installer BIND sur le secondaire</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ns2: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">hostnamectl set-hostname ns2.ofppt.ma</span>
+<span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">dnf install bind bind-utils -y</span>
+<span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">systemctl enable --now named</span>
+<span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">firewall-cmd --permanent --add-service=dns</span>
+<span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">firewall-cmd --reload</span></pre></div></section>
+
+    <section class="step" id="sec4"><div class="step-head"><div class="step-num amber">19</div><h2>🛰️ 1️⃣9️⃣ Configurer named.conf sur le secondaire</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/etc/named.conf (secondaire)</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-key">options</span> {
+    <span class="c-key">listen-on</span> port <span class="c-num">53</span> { <span class="c-ip">192.168.1.254;</span> };
+    <span class="c-key">allow-query</span> { <span class="c-ip">192.168.1.0/24;</span> };
+    <span class="c-key">allow-transfer</span> { none; };              <span class="c-hash">#</span> <span class="c-hash-note">pas de transfert</span>
+};
+
+<span class="c-key">zone</span> <span class="c-str">"ofppt.ma"</span> IN {
+    <span class="c-key">type</span> slave;                              <span class="c-hash">#</span> <span class="c-hash-note">zone secondaire</span>
+    <span class="c-key">masters</span> { <span class="c-ip">192.168.1.10;</span> };               <span class="c-hash">#</span> <span class="c-hash-note">serveur primaire</span>
+    <span class="c-key">file</span> <span class="c-str">"slaves/zone.dir"</span>;                  <span class="c-hash">#</span> <span class="c-hash-note">copie locale</span>
+};
+
+<span class="c-key">zone</span> <span class="c-str">"1.168.192.in-addr.arpa"</span> IN {
+    <span class="c-key">type</span> slave;
+    <span class="c-key">masters</span> { <span class="c-ip">192.168.1.10;</span> };
+    <span class="c-key">file</span> <span class="c-str">"slaves/zone.inv"</span>;
+};</pre></div>
+      <ul class="explain amber">
+        <li><code>type slave</code> — <b>zone secondaire</b> (copie du primaire).</li>
+        <li><code>masters</code> — <b>adresse du primaire</b> à contacter.</li>
+        <li><code>file</code> — <b>fichier de copie locale</b>.</li>
+      </ul>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ns2: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">mkdir -p /var/named/slaves</span>
+<span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">chown named:named /var/named/slaves</span>
+<span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">named-checkconf</span></pre></div></section>
+
+    <section class="step" id="sec5"><div class="step-head"><div class="step-num amber">20</div><h2>🚀 2️⃣0️⃣ Démarrer le secondaire</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ns2: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">systemctl restart named</span>
+<span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">systemctl status named</span></pre></div></section>
+
+    <section class="step" id="sec6"><div class="step-head"><div class="step-num amber">21</div><h2>✅ 2️⃣1️⃣ Vérifier le transfert de zone</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ns2: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">ls -l /var/named/slaves/</span>
+<span class="ok">-rw-r--r--. 1 named named  542 Oct  6 11:02 zone.dir
+-rw-r--r--. 1 named named  498 Oct  6 11:02 zone.inv</span>
+
+<span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">grep -i transfer /var/log/messages | tail -n 5</span>
+<span class="output">named: transfer of 'ofppt.ma/IN' from 192.168.1.10#53: Transfer completed</span></pre></div></section>
+
+    <section class="step" id="sec7"><div class="step-head"><div class="step-num amber">22</div><h2>🧪 2️⃣2️⃣ Tester la résolution via le secondaire</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">client@ofppt: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt amber">[root@pc1 ~]#</span> <span class="cmd">dig @192.168.1.254 pc1.ofppt.ma</span>
+<span class="output">;; ANSWER SECTION:
+pc1.ofppt.ma.	86400	IN	A	</span><span class="ok">192.168.1.20</span>
+
+<span class="prompt amber">[root@pc1 ~]#</span> <span class="cmd">dig @192.168.1.254 -x 192.168.1.20</span>
+<span class="output">;; ANSWER SECTION:
+20.1.168.192.in-addr.arpa. 86400 IN	PTR	</span><span class="ok">pc1.ofppt.ma.</span></pre></div></section>
+
+    <section class="step" id="sec8"><div class="step-head"><div class="step-num amber">23</div><h2>🔄 2️⃣3️⃣ Forcer un transfert avec rndc</h2></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@fedora: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt amber">[root@fedora ~]#</span> <span class="cmd">rndc-confgen -a</span>
+<span class="prompt amber">[root@fedora ~]#</span> <span class="cmd">chown root:named /etc/rndc.key</span>
+<span class="prompt amber">[root@fedora ~]#</span> <span class="cmd">systemctl restart named</span>
+<span class="prompt amber">[root@fedora ~]#</span> <span class="cmd">rndc notify ofppt.ma</span>
+<span class="prompt amber">[root@fedora ~]#</span> <span class="cmd">rndc notify 1.168.192.in-addr.arpa</span></pre></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ns2: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">rndc reload ofppt.ma</span>
+<span class="prompt amber">[root@ns2 ~]#</span> <span class="cmd">rndc reload 1.168.192.in-addr.arpa</span></pre></div>
+      <div class="term"><div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">client@ofppt: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt amber">[root@pc1 ~]#</span> <span class="cmd">dig @192.168.1.10 ofppt.ma AXFR</span>
+<span class="output">ofppt.ma.		86400	IN	SOA	fedora.ofppt.ma. admin.ofppt.ma. 2026100601 ...
+ofppt.ma.		86400	IN	NS	ns2.ofppt.ma.
+pc1.ofppt.ma.		86400	IN	A	</span><span class="ok">192.168.1.20</span></pre></div></section>
+  </main>
+</div>
+
+<!-- ============================================================= -->
+<!-- ===================== MODULE DHCP ========================== -->
+<!-- ============================================================= -->
+<div class="layout hidden" id="dhcpApp">
+  <nav class="sidebar teal" id="sidebarDhcp">
+    <p class="side-title">Sommaire · DHCP</p>
+    <a href="#dhcp1">1 · Vérifier l'installation</a>
+    <a href="#dhcp2">2 · Installer dhcp-server</a>
+    <a href="#dhcp3">3 · Configurer dhcpd.conf</a>
+    <a href="#dhcp4">4 · Démarrer le service</a>
+    <a href="#dhcp5">5 · État du service</a>
+    <a href="#dhcp6">6 · Consulter les baux</a>
+  </nav>
+  <main>
+    <header class="hero">
+      <div class="hero-actions">
+        <button class="lock-btn home" id="homeFromDhcp">↩ Modules</button>
+        <button class="lock-btn" id="lockFromDhcp">🔒 Verrouiller</button>
+      </div>
+      <div class="hero-badge teal" style="background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.28);color:var(--accent2)">📦 DHCP · dhcpd · Baux</div>
+      <h1>📦 Serveur DHCP — Fedora</h1>
+      <p>Installation et configuration d'un serveur DHCP : vérification du paquet, écriture de <code>dhcpd.conf</code> (deux pools LAN1/LAN2 + réservation), démarrage du service et consultation des baux attribués.</p>
+      <div class="hero-meta">
+        <span>🌍 Pool LAN1 : 20.0.0.0/24</span>
+        <span>🌍 Pool LAN2 : 30.0.0.0/24</span>
+        <span>📦 Service : dhcpd</span>
+      </div>
+    </header>
+
+    <section class="step" id="dhcp1">
+      <div class="step-head"><div class="step-num" style="background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.25);color:var(--accent2)">01</div>
+        <h2>1️⃣ Vérifier l'installation du serveur DHCP</h2></div>
+      <p>Vérifier si le paquet <code>dhcp-server</code> est déjà présent sur le système :</p>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@dhcp: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt" style="color:var(--accent2)">[root@dhcp ~]#</span> <span class="cmd">rpm -qa | grep -i dhcp-server</span>
+<span class="output">dhcp-server-4.4.2-19.b1.el9.x86_64</span></pre>
+      </div>
+      <div class="note">
+        ➡️ <code>rpm -qa</code> liste tous les paquets installés, filtré ici sur <b>dhcp-server</b>.
+        Si aucune ligne ne s'affiche, le paquet n'est <b>pas installé</b> → passer à l'étape 2.
+      </div>
+    </section>
+
+    <section class="step" id="dhcp2">
+      <div class="step-head"><div class="step-num" style="background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.25);color:var(--accent2)">02</div>
+        <h2>2️⃣ Installer le serveur DHCP</h2></div>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@dhcp: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt" style="color:var(--accent2)">[root@dhcp ~]#</span> <span class="cmd">dnf install dhcp-server -y</span></pre>
+      </div>
+      <div class="note">➡️ Installe le <b>serveur DHCP</b> (<code>dhcpd</code>) et son fichier de configuration exemple.</div>
+    </section>
+
+    <section class="step" id="dhcp3">
+      <div class="step-head"><div class="step-num" style="background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.25);color:var(--accent2)">03</div>
+        <h2>3️⃣ Configurer le fichier principal du serveur DHCP</h2></div>
+      <p>Éditer le fichier de configuration principal :</p>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@dhcp: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt" style="color:var(--accent2)">[root@dhcp ~]#</span> <span class="cmd">vi /etc/dhcp/dhcpd.conf</span></pre>
+      </div>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/etc/dhcp/dhcpd.conf</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-com"># DHCP Server Configuration file.</span>
+<span class="c-com"># see /usr/share/doc/dhcp-server/dhcpd.conf.example</span>
+<span class="c-com"># see dhcpd.conf(5) man page</span>
+
+<span class="c-com"># pool LAN1</span>
+<span class="c-blue">subnet</span> <span class="c-ip">20.0.0.0</span> netmask <span class="c-ip">255.255.255.0</span> {
+    <span class="c-key">range</span> <span class="c-ip">20.0.0.2</span> <span class="c-ip">20.0.0.100</span>;              <span class="c-hash">#</span> <span class="c-hash-note">20.0.0.1 → dhcp-relay ens33</span>
+    <span class="c-key">option</span> domain-name-servers <span class="c-ip">20.0.0.1</span> , <span class="c-ip">8.8.8.8</span>;  <span class="c-hash">#</span> <span class="c-hash-note">DNS primaire + secondaire</span>
+    <span class="c-key">option</span> domain-name <span class="c-str">"ofppt1.ma"</span>;          <span class="c-hash">#</span> <span class="c-hash-note">domaine LAN1</span>
+    <span class="c-key">option</span> routers <span class="c-ip">20.0.0.1</span>;                     <span class="c-hash">#</span> <span class="c-hash-note">passerelle LAN1</span>
+    <span class="c-key">default-lease-time</span> <span class="c-num">86400</span>;                    <span class="c-hash">#</span> <span class="c-hash-note">1 jour</span>
+    <span class="c-key">max-lease-time</span> <span class="c-num">259200</span>;                        <span class="c-hash">#</span> <span class="c-hash-note">3 jours</span>
+}
+
+<span class="c-com"># pool LAN2</span>
+<span class="c-blue">subnet</span> <span class="c-ip">30.0.0.0</span> netmask <span class="c-ip">255.255.255.0</span> {
+    <span class="c-key">range</span> <span class="c-ip">30.0.0.2</span> <span class="c-ip">30.0.0.100</span>;              <span class="c-hash">#</span> <span class="c-hash-note">30.0.0.1 → dhcp-relay ens37</span>
+    <span class="c-key">option</span> domain-name-servers <span class="c-ip">30.0.0.1</span> , <span class="c-ip">8.8.8.8</span>;
+    <span class="c-key">option</span> domain-name <span class="c-str">"ofppt2.ma"</span>;
+    <span class="c-key">option</span> routers <span class="c-ip">20.0.0.1</span>;                     <span class="c-hash">#</span> <span class="c-hash-note">ens33 ← server-dhcp</span>
+    <span class="c-key">default-lease-time</span> <span class="c-num">86400</span>;
+    <span class="c-key">max-lease-time</span> <span class="c-num">259200</span>;
+}
+
+<span class="c-com"># Réservation d'adresse par MAC</span>
+<span class="c-blue">host</span> pc1 {
+    <span class="c-key">hardware ethernet</span> <span class="c-str">08:00:07:26:c0:a5</span>;          <span class="c-hash">#</span> <span class="c-hash-note">MAC du client</span>
+    <span class="c-key">fixed-address</span> <span class="c-ip">192.168.10.10</span>;                <span class="c-hash">#</span> <span class="c-hash-note">IP réservée</span>
+}</pre>
+      </div>
+      <ul class="explain">
+        <li><code>subnet</code> — <b>déclare un réseau</b> avec masque.</li>
+        <li><code>range</code> — <b>plage d'adresses</b> distribuables.</li>
+        <li><code>domain-name-servers</code> — <b>DNS fournis</b> aux clients.</li>
+        <li><code>routers</code> — <b>passerelle par défaut</b> du client.</li>
+        <li><code>default-lease-time</code> — <b>bail par défaut</b> (secondes).</li>
+        <li><code>max-lease-time</code> — <b>bail maximal</b> autorisé.</li>
+        <li><code>host … fixed-address</code> — <b>réservation</b> MAC → IP fixe.</li>
+      </ul>
+      <div class="note" style="border-left-color:var(--accent2);background:rgba(56,189,248,.055)">
+        📌 <b>Annotations du cours :</b><br>
+        <code>20.0.0.1</code> = IP du <b>DNS primaire</b><br>
+        <code>8.8.8.8</code> = IP du <b>DNS secondaire</b>
+      </div>
+    </section>
+
+    <section class="step" id="dhcp4">
+      <div class="step-head"><div class="step-num" style="background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.25);color:var(--accent2)">04</div>
+        <h2>4️⃣ Démarrer le service DHCP</h2></div>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@dhcp: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt" style="color:var(--accent2)">[root@dhcp ~]#</span> <span class="cmd">systemctl start dhcpd</span></pre>
+      </div>
+      <div class="note">➡️ Démarre immédiatement le serveur DHCP.</div>
+    </section>
+
+    <section class="step" id="dhcp5">
+      <div class="step-head"><div class="step-num" style="background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.25);color:var(--accent2)">05</div>
+        <h2>5️⃣ Afficher l'état du service DHCP</h2></div>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@dhcp: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt" style="color:var(--accent2)">[root@dhcp ~]#</span> <span class="cmd">systemctl status dhcpd</span>
+<span class="output">dhcpd.service - DHCPv4 Server Daemon
+   Loaded: loaded (/usr/lib/systemd/system/dhcpd.service; disabled; vendor preset: disabled)
+   Active: </span><span class="ok">active (running)</span><span class="output"> since Thu 2022-03-17 22:25:41 +01; 8s ago
+     Docs: man:dhcpd(8)
+           man:dhcpd.conf(5)</span></pre>
+      </div>
+      <div class="note green">➡️ <code>Active: active (running)</code> confirme que le serveur DHCP fonctionne.</div>
+    </section>
+
+    <section class="step" id="dhcp6">
+      <div class="step-head"><div class="step-num" style="background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.25);color:var(--accent2)">06</div>
+        <h2>6️⃣ Consulter les baux attribués (leases)</h2></div>
+      <p>Affiche toutes les adresses IP actuellement distribuées aux clients :</p>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@dhcp: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt" style="color:var(--accent2)">[root@dhcp ~]#</span> <span class="cmd">cat /var/lib/dhcp/dhcpd.leases</span>
+<span class="output">lease </span><span class="c-ip">20.0.0.2</span><span class="output"> {
+  starts 1 2021/05/31 07:58:06;
+  ends 1 2021/05/31 08:08:06;
+  tstp 1 2021/05/31 08:08:06;
+  cltt 1 2021/05/31 07:58:06;
+  binding state free;
+  hardware ethernet 00:0c:29:24:f9:29;
+  uid "\001\000\014)$371";
+}
+
+lease </span><span class="c-ip">20.0.0.3</span><span class="output"> {
+  starts 1 2021/05/31 07:57:51;
+  ends 1 2021/05/31 08:07:51;
+  tstp 1 2021/05/31 08:07:51;
+  cltt 1 2021/05/31 07:57:51;
+  binding state free;
+  hardware ethernet 00:50:56:c0:00:02;
+  uid "\001\000PV\300\000\002";
+}</span></pre>
+      </div>
+      <div class="note">
+        📌 <b>Lecture du fichier :</b><br>
+        <code>lease 20.0.0.2</code> → IP attribuée au <b>PC 20.0.0.2</b><br>
+        <code>lease 20.0.0.3</code> → IP attribuée au <b>PC 20.0.0.3</b><br>
+        <code>starts</code> / <code>ends</code> → début et fin du bail<br>
+        <code>hardware ethernet</code> → adresse MAC du client<br>
+        <code>binding state</code> → état du bail (free / active)
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============================================================= -->
+<!-- ===================== MODULE DDNS =========================== -->
+<!-- ============================================================= -->
+<div class="layout hidden" id="ddnsApp">
+  <nav class="sidebar rose" id="sidebarDdns">
+    <p class="side-title">Sommaire · DDNS</p>
+    <a href="#dd1">1 · Config DHCP + DDNS</a>
+    <a href="#dd2">2 · Redémarrer dhcpd</a>
+    <a href="#dd3">3 · Config DNS primaire</a>
+    <a href="#dd4">4 · Désactiver le firewall</a>
+    <a href="#dd5">5 · Désactiver SELinux</a>
+  </nav>
+  <main>
+    <header class="hero">
+      <div class="hero-actions">
+        <button class="lock-btn home" id="homeFromDdns">↩ Modules</button>
+        <button class="lock-btn" id="lockFromDdns">🔒 Verrouiller</button>
+      </div>
+      <div class="hero-badge rose">🔗 DDNS · dhcpd + named · interim</div>
+      <h1>🔗 DDNS — Mise à jour dynamique DNS</h1>
+      <p>Le serveur DHCP met à jour automatiquement les zones DNS (<b>directe</b> et <b>inverse</b>) quand il attribue une adresse. Configuration côté DHCP (<code>ddns-update-style interim</code>) et côté DNS (<code>allow-update</code>).</p>
+      <div class="hero-meta">
+        <span>🌍 Réseau : 192.168.2.0/24</span>
+        <span>🔵 DNS primaire : 192.168.2.200</span>
+        <span>🟣 DHCP server : 192.168.2.202</span>
+        <span>🟡 DNS secondaire : 192.168.2.254</span>
+      </div>
+    </header>
+
+    <section class="step" id="dd1">
+      <div class="step-head"><div class="step-num rose">01</div>
+        <h2>1️⃣ Configurer le serveur DHCP pour le DDNS</h2></div>
+      <p>Éditer <code>/etc/dhcp/dhcpd.conf</code> et activer la mise à jour dynamique :</p>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ddns: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt rose">[root@ddns ~]#</span> <span class="cmd">vi /etc/dhcp/dhcpd.conf</span></pre>
+      </div>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/etc/dhcp/dhcpd.conf</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-com"># pool 1</span>
+<span class="c-rose">subnet</span> <span class="c-ip">192.168.2.0</span> netmask <span class="c-ip">255.255.255.0</span> {
+    <span class="c-key">range</span> <span class="c-ip">192.168.2.100</span> <span class="c-ip">192.168.2.199</span>;        <span class="c-hash">#</span> <span class="c-hash-note">.200 = DNS primaire</span>
+    <span class="c-key">range</span> <span class="c-ip">192.168.2.203</span> <span class="c-ip">192.168.2.253</span>;        <span class="c-hash">#</span> <span class="c-hash-note">.254 DNS sec + .202 DHCP</span>
+    <span class="c-key">option</span> domain-name-servers <span class="c-ip">192.168.2.200</span>,<span class="c-ip">192.168.2.254</span>;  <span class="c-hash">#</span> <span class="c-hash-note">DNS prim + sec</span>
+    <span class="c-key">option</span> domain-name <span class="c-str">"ofppt.local"</span>;              <span class="c-hash">#</span> <span class="c-hash-note">nom de domaine</span>
+    <span class="c-key">option</span> routers <span class="c-ip">192.168.2.1</span>;                     <span class="c-hash">#</span> <span class="c-hash-note">passerelle</span>
+    <span class="c-key">default-lease-time</span> <span class="c-num">600</span>;                      <span class="c-hash">#</span> <span class="c-hash-note">10 min</span>
+    <span class="c-key">max-lease-time</span> <span class="c-num">7200</span>;                          <span class="c-hash">#</span> <span class="c-hash-note">2 h</span>
+
+    <span class="c-rose">ddns-update</span> on;                               <span class="c-hash">#</span> <span class="c-hash-note">active DDNS</span>
+    <span class="c-rose">ddns-update-style</span> interim;                   <span class="c-hash">#</span> <span class="c-hash-note">style interim</span>
+    <span class="c-rose">deny</span> client-updates;                          <span class="c-hash">#</span> <span class="c-hash-note">clients interdits</span>
+    <span class="c-rose">ddns-domainname</span> <span class="c-str">"ofppt.local"</span>;               <span class="c-hash">#</span> <span class="c-hash-note">zone directe</span>
+    <span class="c-rose">ddns-rev-domainname</span> <span class="c-str">"2.168.192.in-addr.arpa"</span>;<span class="c-hash">#</span> <span class="c-hash-note">zone inverse</span>
+    <span class="c-rose">authoritative</span>;                               <span class="c-hash">#</span> <span class="c-hash-note">serveur officiel</span>
+
+    <span class="c-com">// zone directe</span>
+    <span class="c-rose">zone</span> <span class="c-str">ofppt.local.</span> {
+        <span class="c-key">primary</span> <span class="c-ip">192.168.2.200</span>;                    <span class="c-hash">#</span> <span class="c-hash-note">IP DNS primaire</span>
+    }
+
+    <span class="c-com">// zone inverse</span>
+    <span class="c-rose">zone</span> <span class="c-str">2.168.192.in-addr.arpa.</span> {
+        <span class="c-key">primary</span> <span class="c-ip">192.168.2.200</span>;                    <span class="c-hash">#</span> <span class="c-hash-note">IP DNS primaire</span>
+    }
+}</pre>
+      </div>
+      <ul class="explain rose">
+        <li><code>ddns-update on</code> — <b>active les mises à jour</b> DNS.</li>
+        <li><code>ddns-update-style interim</code> — <b>style de mise à jour</b> (standard DHCP).</li>
+        <li><code>deny client-updates</code> — <b>clients interdits</b> de mettre à jour eux-mêmes.</li>
+        <li><code>ddns-domainname</code> — <b>suffixe de zone directe</b>.</li>
+        <li><code>ddns-rev-domainname</code> — <b>suffixe de zone inverse</b>.</li>
+        <li><code>zone … { primary … }</code> — <b>adresse du DNS primaire</b> à contacter.</li>
+      </ul>
+    </section>
+
+    <section class="step" id="dd2">
+      <div class="step-head"><div class="step-num rose">02</div>
+        <h2>2️⃣ Redémarrer le service DHCP</h2></div>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@ddns: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt rose">[root@ddns ~]#</span> <span class="cmd">systemctl restart dhcpd</span>
+<span class="prompt rose">[root@ddns ~]#</span> <span class="cmd">systemctl status dhcpd</span>
+<span class="output">Active: </span><span class="ok">active (running)</span></pre>
+      </div>
+      <div class="note rose">➡️ Après redémarrage, chaque bail DHCP déclenchera une mise à jour DNS auprès du primaire.</div>
+    </section>
+
+    <section class="step" id="dd3">
+      <div class="step-head"><div class="step-num rose">03</div>
+        <h2>3️⃣ Autoriser les mises à jour sur le DNS primaire</h2></div>
+      <p>Sur <b>192.168.2.200</b>, éditer <code>/etc/named.conf</code> et autoriser le serveur DHCP à modifier les zones :</p>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@dns1: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt rose">[root@dns1 ~]#</span> <span class="cmd">vi /etc/named.conf</span></pre>
+      </div>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">/etc/named.conf (DNS primaire 192.168.2.200)</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="c-com">// zone directe</span>
+<span class="c-key">zone</span> <span class="c-str">"ofppt.local"</span> IN {
+    <span class="c-key">type</span> master;
+    <span class="c-key">file</span> <span class="c-str">"ofppt.local.db"</span>;
+    <span class="c-rose">allow-update</span> { <span class="c-ip">192.168.2.202;</span> };   <span class="c-hash">#</span> <span class="c-hash-note">IP serveur DHCP</span>
+};
+
+<span class="c-com">// zone inverse</span>
+<span class="c-key">zone</span> <span class="c-str">"2.168.192.in-addr.arpa"</span> IN {
+    <span class="c-key">type</span> master;
+    <span class="c-key">file</span> <span class="c-str">"2.168.192.db"</span>;
+    <span class="c-rose">allow-update</span> { <span class="c-ip">192.168.2.202;</span> };   <span class="c-hash">#</span> <span class="c-hash-note">IP serveur DHCP</span>
+};</pre>
+      </div>
+      <ul class="explain rose">
+        <li><code>allow-update</code> — <b>autorise un serveur</b> à modifier la zone.</li>
+        <li><code>192.168.2.202</code> — <b>IP du serveur DHCP</b> autorisé.</li>
+      </ul>
+      <div class="note warn">⚠️ <b>Sans</b> cette directive, le serveur DHCP ne pourra pas écrire dans la zone → erreur <b>« update failed: REFUSED »</b>.</div>
+    </section>
+
+    <section class="step" id="dd4">
+      <div class="step-head"><div class="step-num rose">04</div>
+        <h2>4️⃣ Désactiver le firewall</h2></div>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@dns1: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt rose">[root@dns1 ~]#</span> <span class="cmd">systemctl stop firewalld</span></pre>
+      </div>
+      <div class="note rose">➡️ Stoppe le pare-feu pour éviter qu'il bloque les mises à jour DNS dynamiques entre le serveur DHCP et le DNS.</div>
+    </section>
+
+    <section class="step" id="dd5">
+      <div class="step-head"><div class="step-num rose">05</div>
+        <h2>5️⃣ Désactiver SELinux</h2></div>
+      <div class="term">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">root@dns1: ~</span><button class="copy-btn">Copier</button></div>
+        <pre class="term-body"><span class="prompt rose">[root@dns1 ~]#</span> <span class="cmd">setenforce 0</span>
+<span class="output">(SELinux est maintenant en mode permissif)</span>
+
+<span class="c-com"># Vérification</span>
+<span class="prompt rose">[root@dns1 ~]#</span> <span class="cmd">getenforce</span>
+<span class="output">Permissive</span></pre>
+      </div>
+      <div class="note warn">⚠️ <code>setenforce 0</code> = mode <b>Permissive</b> (aucun blocage) · <code>setenforce 1</code> = mode <b>Enforcing</b> (contrôle de sécurité actif).</div>
+    </section>
+  </main>
+</div>
+
+<script src="js/hash.js"></script>
+<script src="js/config.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

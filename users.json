@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "updatedAt": 1767225600000,
+  "admin": {
+    "username": "admin",
+    "salt": "a8f9d73a5b8a86d0217415240ac6a4cd",
+    "hash": "233c05fec00a16efc5566f7b8c0e55131beac531c2c1bdfb7d4f5a90579a433a"
+  },
+  "users": [
+    {
+      "username": "user1",
+      "name": "Utilisateur 1",
+      "salt": "cc5f99cd41edc8fa8ead2e6e0ad45eb4",
+      "hash": "9b312e95c61226b417359ee1750b64f2feae50f61faedea648ad75c058602f6a",
+      "courses": [
+        "dns",
+        "ddns"
+      ]
+    },
+    {
+      "username": "user2",
+      "name": "Utilisateur 2",
+      "salt": "354e50a07037b37039a16d34684082b4",
+      "hash": "faca6eb1e24b1e54920383066a99d7cbf2fcbc23e8944b82366ee370799702ed",
+      "courses": [
+        "dns"
+      ]
+    }
+  ]
+}
